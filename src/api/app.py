@@ -8,7 +8,6 @@ from src.config import settings
 from src.api.materials import router as materials_router
 from src.api.analysis import router as analysis_router
 from src.api.presentation import router as presentation_router
-from src.api.topics import router as topics_router
 
 
 @asynccontextmanager
@@ -26,7 +25,6 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(materials_router)
-    app.include_router(topics_router)
     app.include_router(analysis_router)
     app.include_router(presentation_router)
 

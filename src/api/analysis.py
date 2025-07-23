@@ -26,3 +26,6 @@ async def analyze_materials(
 
     # TODO: implement check for how many generations/analyses the user has already made..
     return await extraction_svc.analyze_and_structure_materials(payload.material_keys)
+
+
+# TODO: implement a topic list generator endpoint that uses topic_list_generator.prompt
