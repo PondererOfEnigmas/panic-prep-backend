@@ -1,0 +1,19 @@
+You are an expert LaTeX developer.
+
+Below is a Beamer document that FAILED to compile.
+The compiler’s error trace is shown first, then the LaTeX source.
+
+--------  ERROR LOG  --------
+{error_snippet}
+--------  SOURCE  --------
+{latex_code}
+---------------------------------
+
+TASK:
+Return a **fully compilable** Beamer document.
+ • Keep the structure and content as intact as possible.
+ • Fix missing \end’s, undefined environments, bad packages, etc.
+ • Always start with \documentclass{beamer} and end with \end{document}.
+ • Do not wrap the code in Markdown fences.
+
+**Produce ONLY the corrected LaTeX. AVOID ALL EXPLANATORY MESSAGES AND RETURN ONLY THE LATEX CODE**

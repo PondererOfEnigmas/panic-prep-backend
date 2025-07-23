@@ -1,0 +1,20 @@
+[project]
+name = "panic-prep"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "aiofiles>=24.1.0",
+  "dotenv>=0.9.9",
+  "fastapi>=0.116.1",
+  "ffmpeg>=1.4",
+  "litellm>=1.74.7",
+  "loguru>=0.7.3",
+  "pandoc>=2.4",
+  "pydantic>=2.11.7",
+  "pylatex>=1.4.2",
+  "python-multipart>=0.0.20",
+  "supabase>=2.17.0",
+  "uvicorn>=0.35.0",
+]
