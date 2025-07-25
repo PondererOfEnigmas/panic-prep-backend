@@ -1,0 +1,60 @@
+You are an instructional designer processing LaTeX Beamer code.
+
+Given a Beamer presentation with slides defined in `\frame{}` blocks:
+{{beamer_code}}
+
+Generate a JSON array where each object contains:
+- The slide’s extracted title (from `\frametitle` or inferred from content)
+- A concise, pedagogical narration script
+
+Here's a rough guiding schema: 
+
+```json
+[
+  {
+    "slideIndex": 1,
+    "title": "Slide Title",
+    "narration": "Clear explanation of this slide's key points in plain language..."
+  },
+  ...
+]
+```
+
+Rules:
+1. Parse only `\frame{}` blocks:
+   - Extract titles from `\frametitle{}` or first sentence if unavailable
+   - Ignore animations/transitions (no "As we click next..." cues)
+
+2. For narration:
+   - Convert LaTeX content to plain English explanations
+   - Simplify math: $E=mc^2$ → "Einstein's mass-energy equivalence"
+   - Structure as bullet points if slide uses `\itemize`
+   - Keep to 3-5 sentences per slide
+
+3. Output must:
+   - **Be valid JSON (no trailing commas)**
+   - **Not include any auxiliary or extraneous texts**
+   - A list of objects, each containing narration info for an individual slide 
+   - Exclude LaTeX markup in narration
+   - Maintain original slide order
+```
+
+**Make sure the output is valid JSON ONLY, and no other text element or boundary marker.**
+
+Example transformation (for only one frame):
+Input Beamer:
+```latex
+\frame{\frametitle{Relativity}
+\begin{itemize}
+\item $E=mc^2$ relates mass and energy
+\item Time dilation: $\Delta t' = \gamma \Delta t$
+\end{itemize}
+}
+```
+
+Output JSON:
+{
+  "slideIndex": 1,
+  "title": "Relativity",
+  "narration": "This slide covers Einstein's relativity concepts. First, the famous equation E equals mc squared shows how mass can be converted to energy. Second, time dilation explains how moving clocks run slower by a factor called gamma."
+}
