@@ -6,6 +6,7 @@ from loguru import logger
 from src.config import settings
 from src.utils.llm import call_llm_text, load_prompt_template
 
+from time import sleep
 
 # redaction helper
 _PATH_PAT = re.compile(
@@ -44,7 +45,7 @@ async def _pdflatex(job_id: str) -> tuple[int, str]:
 async def compile_latex_with_retries(
     latex_code: str,
     job_id: str,
-    max_rounds: int = 3,
+    max_rounds: int = 5,
 ) -> Path:
     """
     Compile LaTeX; on failure, redact path info, ask LLM to fix, and retry.
@@ -67,6 +68,9 @@ async def compile_latex_with_retries(
 
         # ---- on failure ------------------------------------------------------
         logger.warning("pdflatex failed (attempt {})", attempt)
+
+        logger.info("Wating for 5 seconds before retrying")
+        sleep(5)
 
         # collect tail of .log (typically more informative than stderr)
         log_path = settings.workspace_root / f"{job_id}.log"
