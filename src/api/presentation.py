@@ -45,9 +45,6 @@ async def build_slides(
     return png_urls
 
 
-# TODO: /build_presentation
-
-
 class SlideWithAudio(BaseModel):
     slideIndex: int
     title: str
