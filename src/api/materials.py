@@ -8,7 +8,7 @@ router = APIRouter(prefix="/presentation", tags=["presentation"])
 
 
 class KeylistResponse(BaseModel):
-    keys: list[str]
+    material_keys: list[str]
 
 
 @router.post(

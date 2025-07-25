@@ -50,11 +50,9 @@ async def prepare_payload(
 
     # 2) each file
     for key in material_keys:
-        logger.debug(key)
         fp = settings.materials_dir / key
         if not fp.exists():
             raise FileNotFoundError(f"Missing material: {key}")
-        logger.debug(fp)
 
         ext = fp.suffix.lower()
         if ext not in settings.materials_extraction_supported_formats:
@@ -137,29 +135,64 @@ async def extract_and_structure(
     }
 
 
+def parse_topics_list(raw: str) -> List[Dict[str, List[str]]]:
+    """
+    Parses a numbered-and-indented topics list into structured dicts.
+    Expects format like:
+
+    1. Main Topic
+       - Subtopic A
+       - Subtopic B
+    2. Another Main Topic
+       - Subtopic C
+    """
+    topics: List[Dict[str, List[str]]] = []
+    current_topic = None
+
+    for line in raw.splitlines():
+        line = line.rstrip()
+        # Match main topic lines: "1. Title"
+        m = re.match(r"^\s*(\d+)\.\s+(.*)", line)
+        if m:
+            # start a new topic
+            current_topic = {"topic": m.group(2).strip(), "subtopics": []}
+            topics.append(current_topic)
+            continue
+
+        # Match subtopic lines: "- Subtopic"
+        m = re.match(r"^\s*-\s+(.*)", line)
+        if m and current_topic is not None:
+            current_topic["subtopics"].append(m.group(1).strip())
+
+    return topics
+
+
 async def analyze_and_structure_materials(
     material_keys: List[str],
 ) -> Dict[str, Any]:
     """
-    Combines deep extraction + topic structuring **and**
-    stores the extracted_content on disk under a job_id.
+    Combines deep extraction + topic structuring and stores the extracted_content.
 
-    Returns
-    -------
-    { "job_id": "<uuid>",
-      "topics_list": "<raw topics list string from LLM>" }
+    Returns:
+      {
+        "job_id": "<uuid>",
+        "outline": List[Topic]
+      }
     """
-    # 1) run the existing deep-extraction flow
+    # 1) deep extraction
     extraction = await extract_and_structure(material_keys)
+    raw_topics = extraction["topics_list"]  # raw string from LLM
 
+    # 2) persist extracted content
     job_id = uuid.uuid4().hex
     cache_path = settings.workspace_root / f"{job_id}_content.txt"
-
-    # 2) persist extracted_content so later steps can pick it up
     async with aiofiles.open(cache_path, "w", encoding="utf-8") as f:
         await f.write(extraction["extracted_content"])
 
+    # 3) parse raw topics into structured list
+    structured = parse_topics_list(raw_topics)
+
     return {
         "job_id": job_id,
-        "topics_list": extraction["topics_list"],
+        "outline": structured,
     }
