@@ -44,4 +44,10 @@ def create_app() -> FastAPI:
     app.mount(
         "/materials", StaticFiles(directory=settings.materials_dir), name="materials"
     )
+
+    app.mount(
+        "/audios",
+        StaticFiles(directory=str(settings.audios_dir), html=False),
+        name="audios",
+    )
     return app
