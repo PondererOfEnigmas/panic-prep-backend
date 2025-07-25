@@ -92,6 +92,10 @@ async def check_generation_limit(user: User = Depends(get_current_user)) -> None
     )
 
     current = res.data[0]["count"] if res.data else 0
+
+    if settings.dev_mode:
+        return
+
     if current >= settings.max_gen_per_day:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,

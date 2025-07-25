@@ -20,6 +20,9 @@ if ENV_FILE.exists():
 # Config Dataclass
 @dataclass
 class Config:
+    host: str = "0.0.0.0"
+    port: int = 8000
+
     # Auth
     supabase_url: str = field(default_factory=lambda: os.environ["SUPABASE_URL"])
     supabase_jwk_url: str = field(
@@ -99,6 +102,9 @@ class Config:
             os.getenv("materials_extraction_MAX_TOKENS", "32768")
         )
     )
+
+    kokoro_voice_default: str = "af_heart"
+    dev_mode: bool = True
 
     def __post_init__(self):
         # Ensure workspace structure
