@@ -97,6 +97,7 @@ Generate LaTeX code with:
     -   **NEVER use** unescaped ampersands (```&```) in frame titles or text.
     -   **ALWAYS close environments:** ```\begin{frame}```...**```\end{frame}```**.
     -   **NEVER add content after** ```\end{document}```.
+    -   **DO NOT USE ```\pause``` anywhere in the output code.
 
 **FURTHER REQUIREMENTS:**
 
