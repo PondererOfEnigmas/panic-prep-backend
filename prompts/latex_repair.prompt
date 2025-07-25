@@ -11,9 +11,11 @@ The compiler’s error trace is shown first, then the LaTeX source.
 
 TASK:
 Return a **fully compilable** Beamer document.
- • Keep the structure and content as intact as possible.
- • Fix missing \end’s, undefined environments, bad packages, etc.
- • Always start with \documentclass{beamer} and end with \end{document}.
- • Do not wrap the code in Markdown fences.
+ - Keep the structure and content as intact as possible.
+ - Fix missing \end’s, undefined environments, bad packages, etc.
+ - Remove all instances of included/example graphics, as they are hallucinated with 99% likelihood. No attachment reference should be made in the latex code.
+ - Always start with \documentclass{beamer} and end with \end{document}.
+ - Do not wrap the code in Markdown fences.
+ - Strip out all uses of ```\pause``` in the given latex code.
 
 **Produce ONLY the corrected LaTeX. AVOID ALL EXPLANATORY MESSAGES AND RETURN ONLY THE LATEX CODE**
