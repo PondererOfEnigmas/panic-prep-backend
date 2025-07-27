@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, File, HTTPException, status, UploadFile
 from pydantic import BaseModel
 
-from src.utils.auth import get_current_user
+from src.utils.auth import User, get_current_user
 from src.services.materials import save_uploaded_materials
 
 
