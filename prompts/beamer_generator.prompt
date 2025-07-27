@@ -93,7 +93,7 @@ Generate LaTeX code with:
     -   Verbal cues (e.g., ```% CUE: "Notice here..."```)
 
 5.  **STRICT BEAMER RULES:**
-    -   **NEVER include** ```\documentclass```, ```\usepackage```, or other preamble commands.
+    -   **ALWAYS include** the preamble commands given in the latex template above. Do not include any other preamble commands.
     -   **NEVER use** unescaped ampersands (```&```) in frame titles or text.
     -   **ALWAYS close environments:** ```\begin{frame}```...**```\end{frame}```**.
     -   **NEVER add content after** ```\end{document}```.
