@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, File, HTTPException, status, UploadFile
 from pydantic import BaseModel
 
-from src.utils.auth import verify_token
+from src.utils.auth import get_current_user
 from src.services.materials import save_uploaded_materials
+
 
 router = APIRouter(prefix="/presentation", tags=["presentation"])
 
@@ -18,7 +19,7 @@ class KeylistResponse(BaseModel):
 )
 async def upload_materials(
     files: list[UploadFile] = File(...),
-    _user=Depends(verify_token),
+    user: User = Depends(get_current_user),
 ):
     """
     Upload up to max_attachments files, each <= max_attachment_size_mb.
@@ -31,4 +32,4 @@ async def upload_materials(
         )
 
     keys = await save_uploaded_materials(files)
-    return {"keys": keys}
+    return {"material_keys": keys}
