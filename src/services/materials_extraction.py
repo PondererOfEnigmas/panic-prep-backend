@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 import base64
 import asyncio
 import subprocess
@@ -36,35 +37,38 @@ async def prepare_payload(
     material_keys: List[str],
 ) -> List[Dict[str, Any]]:
     """
-    Build a Gemini‐compatible content array:
-      - first element: prompt text (materials_extraction.prompt)
-      - subsequent: base64 image_url entries (PDFs/images)
+    Build a Gemini-compatible content array.
+
+    - first element: prompt text (materials_extraction.prompt)
+    - subsequent elements: base-64 inlined PDFs / images
     """
+    # 0. normalise & validate keys
+    keys = [k.strip() for k in material_keys if k and k.strip()]
+    if not keys:
+        raise HTTPException(status_code=422, detail="no materials supplied")
+
     payload: List[Dict[str, Any]] = []
 
-    # FIX: the case where material keys supplied are all empty, or wrong, or whatever..
-
-    # 1) prompt text
+    # 1. prompt text
     prompt_txt = await load_prompt_template("materials_extraction.prompt")
     payload.append({"type": "text", "text": prompt_txt})
 
-    # 2) each file
-    for key in material_keys:
+    # 2. inlined attachments
+    for key in keys:
         fp = settings.materials_dir / key
         if not fp.exists():
-            raise FileNotFoundError(f"Missing material: {key}")
+            raise HTTPException(status_code=404, detail=f"material not found: {key}")
 
         ext = fp.suffix.lower()
         if ext not in settings.materials_extraction_supported_formats:
             fp = await _convert_to_pdf(fp)
             ext = fp.suffix.lower()
 
-        _check_size(fp)
+        _check_size(fp)  # may raise 413 via HTTPException inside _check_size
 
-        data = fp.read_bytes()
-        b64 = base64.b64encode(data).decode("ascii")
+        b64 = base64.b64encode(fp.read_bytes()).decode("ascii")
 
-        if ext in [".jpg", ".jpeg", ".png"]:
+        if ext in {".jpg", ".jpeg", ".png"}:
             mime = f"image/{ext.lstrip('.')}"
         else:
             mime = "application/pdf"
