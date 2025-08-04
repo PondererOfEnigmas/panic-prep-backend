@@ -12,4 +12,17 @@ wheels/
 # misc
 .env
 tmp/
-.DS_STORE
+.DS_Store
+requirements/
+slides/
+documents/
+analysis_output/
+token.txt
+presentation_output/
+
+.nuanced/
+SPEC_STATUS.md
+extract_from_documents.py
+presentation_generator.py
+src/SPEC.md
+src/SPEC_by_gemini.md
