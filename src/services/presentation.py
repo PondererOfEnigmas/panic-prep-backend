@@ -31,6 +31,8 @@ async def create_slides_from_outline(
     3. Call LLM to generate LaTeX, compile to PDF, convert to PNGs.
     4. Return the list of slide PNG URLs.
     """
+
+    # check if there are cached extracted materials
     if cached:
         extracted_content = await _load_cached_content(job_id)
     else:
