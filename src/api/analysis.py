@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from src.services import materials_extraction as extraction_svc
 from src.utils.auth import check_generation_limit, get_current_user, User
 
+from src.services import topic_outline
+
 router = APIRouter(prefix="/presentation", tags=["Analysis"])
 
 
@@ -36,4 +38,19 @@ async def analyze_materials(
     return await extraction_svc.analyze_and_structure_materials(payload.material_keys)
 
 
-# TODO: implement a topic list generator endpoint that uses topic_list_generator.prompt
+class TopicOutlineRequest(BaseModel):
+    topics: list[str]
+
+
+@router.post(
+    "/topic_outline",
+    response_model=AnalysisResponse,
+    summary="Generate structured outline from plain topics (no materials).",
+)
+async def topic_outline_generator(
+    payload: TopicOutlineRequest,
+    _=Depends(check_generation_limit),
+):
+    outline = await topic_outline.generate_outline(payload.topics)
+    # job_id blank to signal “no cached materials”
+    return {"job_id": "", "outline": outline}

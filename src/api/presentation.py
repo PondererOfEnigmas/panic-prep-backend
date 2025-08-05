@@ -1,26 +1,22 @@
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from loguru import logger
 
 from src.services import presentation as pres_svc
 from src.services.presentation import generate_narrations
-from src.utils.auth import get_current_user, User, check_generation_limit
-
+from src.services.topic_outline import allocate_job_id
 from src.services.tts import synthesize_tts
-
+from src.utils.auth import get_current_user, User, check_generation_limit
 from src.config import settings
-from typing import Optional
-
-from loguru import logger
-
 
 router = APIRouter(prefix="/presentation", tags=["Presentation"])
 
 
 class BuildSlidesPayload(BaseModel):
-    job_id: str = Field(
-        ..., description="job_id obtained from /presentation/analyze_materials"
-    )
-    outline: list[dict] = Field(
+    job_id: str = Field("", description="Optional; blank for topic‐only flow")
+    outline: List[dict] = Field(
         ...,
         example=[{"topic": "Chain rule", "subtopics": ["definition", "examples"]}],
     )
@@ -28,7 +24,7 @@ class BuildSlidesPayload(BaseModel):
 
 @router.post(
     "/build_slides",
-    response_model=list[str],
+    response_model=List[str],
     dependencies=[Depends(check_generation_limit)],
 )
 async def build_slides(
@@ -38,10 +34,12 @@ async def build_slides(
     if not payload.outline:
         raise HTTPException(status_code=422, detail="Outline cannot be empty")
 
+    # Use provided job_id or allocate a new one for topic-only
+    cached = False if not payload.job_id else True
+    job_id = payload.job_id or allocate_job_id()
     png_urls = await pres_svc.create_slides_from_outline(
-        payload.job_id, payload.outline
+        job_id, payload.outline, cached
     )
-
     return png_urls
 
 
@@ -53,59 +51,65 @@ class SlideWithAudio(BaseModel):
 
 
 class BuildPresentationPayload(BaseModel):
-    job_id: str
-    outline: list[dict]
-    voice: Optional[str] = Field(None, description="optional Kokoro voice")
+    job_id: str = Field("", description="Optional; blank for topic‐only flow")
+    outline: List[dict]
+    voice: Optional[str] = Field(None, description="Optional Kokoro voice")
 
 
 @router.post(
     "/build_presentation",
-    response_model=list[SlideWithAudio],
+    response_model=List[SlideWithAudio],
     dependencies=[Depends(get_current_user), Depends(check_generation_limit)],
 )
 async def build_presentation(payload: BuildPresentationPayload):
-    voice = payload.voice or settings.kokoro_voice_default
+    if not payload.outline:
+        raise HTTPException(status_code=422, detail="Outline cannot be empty")
 
+    voice = payload.voice or settings.kokoro_voice_default
+    job_id = payload.job_id or allocate_job_id()
+
+    cached = False if not payload.job_id else True
+
+    # 1) Generate slides (topic-only or materials-based)
     png_urls = await pres_svc.create_slides_from_outline(
-        payload.job_id, payload.outline
+        job_id, payload.outline, cached
     )
 
-    # latex_code, png_urls = await asyncio.to_thread(
-    #     pres_svc.create_slides_from_outline, payload.job_id, payload.outline
-    # )
+    # 2) Generate slide narrations metadata
+    narrations = await generate_narrations(job_id)
 
-    # narrations = await asyncio.to_thread(generate_narrations, payload.job_id)
-    narrations = await generate_narrations(payload.job_id)
+    if len(narrations) != len(png_urls):
+        raise HTTPException(
+            status_code=500,
+            detail="Mismatch between slides and narration count",
+        )
 
-    # return narrations
+    logger.info(f"Generating TTS for {len(narrations)} slides (job {job_id})")
 
-    results = []
-
-    assert len(narrations) == len(png_urls)
-
-    logger.info(f"starting to generate TTS for {len(narrations)} slides")
-
+    # 3) Synthesize TTS and assemble response
+    results: List[SlideWithAudio] = []
     for slide in narrations:
         idx = slide["slideIndex"]
-        audio_url = await synthesize_tts(slide["narration"], payload.job_id, idx, voice)
+        title = slide.get("title", "")
+        text = slide.get("narration", "")
+
+        audio_url = await synthesize_tts(text, job_id, idx, voice)
+
         try:
-            png_url = next(
-                u for u in png_urls if payload.job_id in u and f"{idx}.png" in u
-            )
+            png_url = next(u for u in png_urls if job_id in u and f"{idx}.png" in u)
         except StopIteration:
-            raise Exception("Mismtach in slide numbering/path")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Could not find PNG for slide {idx}",
+            )
+
         results.append(
-            {
-                "slideIndex": idx,
-                "title": slide["title"],
-                "slide_png_url": png_url,
-                "audio_url": audio_url,
-            }
+            SlideWithAudio(
+                slideIndex=idx,
+                title=title,
+                slide_png_url=png_url,
+                audio_url=audio_url,
+            )
         )
 
     return results
-
-
-# TODO: support /build_slides and /build_presentation
-# through just a refined list of topics too
-# (use beamer_topics_only.prompt..)

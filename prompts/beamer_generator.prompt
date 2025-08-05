@@ -41,7 +41,7 @@ Generate LaTeX code with:
 \usepackage[utf8]{inputenc}
 
 % Title slide
-\title{LiteLLM Presentation}
+\title{Presentation} % give an appropriate title
 \author{Generated with Gemini Pro}
 \date{\today}
 

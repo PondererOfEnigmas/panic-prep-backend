@@ -22,48 +22,44 @@ async def _load_cached_content(job_id: str) -> str:
         return await f.read()
 
 
-async def create_slides_from_outline(job_id: str, outline: list[dict]) -> list[str]:
+async def create_slides_from_outline(
+    job_id: str, outline: list[dict], cached=True
+) -> list[str]:
     """
-    1. Read cached extracted_content.
-    2. Prompt LLM → Beamer LaTeX using BOTH content & outline.
-    3. Build PDF & convert to PNGs.
-    4. Return /pngs/… URLs (ordered).
+    1. Try to load cached extracted_content (materials flow).
+    2. Select the appropriate Beamer prompt.
+    3. Call LLM to generate LaTeX, compile to PDF, convert to PNGs.
+    4. Return the list of slide PNG URLs.
     """
-    extracted_content = await _load_cached_content(job_id)
+    if cached:
+        extracted_content = await _load_cached_content(job_id)
+    else:
+        extracted_content = None
 
-    # prompt_tpl = await load_prompt_template("beamer_generator.prompt")
-    # prompt = prompt_tpl.format(
-    #     extracted_content=extracted_content,
-    #     outline=outline,  # pydantic serialises list nicely
-    # )
+    prompt_name = (
+        "beamer_generator.prompt" if extracted_content else "beamer_topics_only.prompt"
+    )
+    tpl = await load_prompt_template(prompt_name)
 
-    tpl = await load_prompt_template("beamer_generator.prompt")
-    prompt = tpl.replace("{{extracted_content}}", extracted_content).replace(
+    # Simple replacement for backward-compatible templates
+    prompt = tpl.replace("{{extracted_content}}", extracted_content or "").replace(
         "{{outline}}", str(outline)
     )
 
     latex = await call_llm_text(
         prompt,
         {},
-        # variables={"extracted_content": extracted_content, "outline": outline},
     )
-
-    # if model wrapped result in ```latex blocks
     if latex.lstrip().startswith("```"):
         latex = latex.split("```")[1]
 
     tex_dir = settings.workspace_root / job_id
-    tex_dir.mkdir(parents=True, exist_ok=True)  # ensure job dir exists
+    tex_dir.mkdir(parents=True, exist_ok=True)
     tex_path = tex_dir / "presentation.tex"
-    tex_path.write_text(latex, encoding="utf-8")  # **save .tex file**
+    tex_path.write_text(latex, encoding="utf-8")
 
-    pdf_path = await compile_latex_with_retries(
-        latex, job_id
-    )  # instead of generate_pdf_from_latex(...)
+    pdf_path = await compile_latex_with_retries(latex, job_id)
     png_urls = await convert_pdf_to_pngs(pdf_path, job_id)
-
-    # delete cache so disk doesn&#x27;t bloat
-    # (settings.workspace_root / f"{job_id}_content.txt").unlink(missing_ok=True)
 
     logger.info("Generated {} slides for job {}", len(png_urls), job_id)
     return png_urls
