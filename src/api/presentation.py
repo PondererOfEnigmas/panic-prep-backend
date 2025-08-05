@@ -11,6 +11,8 @@ from src.services.tts import synthesize_tts
 from src.utils.auth import get_current_user, User, check_generation_limit
 from src.config import settings
 
+from src.services.presentation import stitch_video
+
 router = APIRouter(prefix="/presentation", tags=["Presentation"])
 
 
@@ -20,6 +22,9 @@ class BuildSlidesPayload(BaseModel):
         ...,
         example=[{"topic": "Chain rule", "subtopics": ["definition", "examples"]}],
     )
+
+
+# FIX: these and other commands involving a job_id, can only be performed by user that initiated a job_id..
 
 
 @router.post(
@@ -113,3 +118,28 @@ async def build_presentation(payload: BuildPresentationPayload):
         )
 
     return results
+
+
+class DownloadVideoRequest(BaseModel):
+    job_id: str
+
+
+@router.post(
+    "/download_video",
+    summary="Get the URL of the stitched MP4 for a completed job",
+)
+async def download_video(
+    body: DownloadVideoRequest,
+    user: User = Depends(get_current_user),
+    _=Depends(check_generation_limit),
+):
+    """
+    Ensures the video is stitched, then returns its mounted URL under /videos/.
+    """
+    video_path = await stitch_video(body.job_id)
+    if not video_path.exists():
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    # assuming StaticFiles is mounted at '/videos' pointing to settings.video_dir
+    url = f"/videos/{video_path.name}"
+    return {"video_url": url}

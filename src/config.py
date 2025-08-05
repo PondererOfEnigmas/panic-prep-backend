@@ -106,6 +106,8 @@ class Config:
     kokoro_voice_default: str = "af_heart"
     dev_mode: bool = True
 
+    ffmpeg_max_concurrency: int = 2
+
     def __post_init__(self):
         # Ensure workspace structure
         for sub in ("", "materials", "pngs", "audios", "videos"):

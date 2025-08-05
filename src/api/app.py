@@ -41,13 +41,17 @@ def create_app() -> FastAPI:
 
     # expose generated artefacts
     app.mount("/pngs", StaticFiles(directory=settings.pngs_dir), name="pngs")
-    app.mount(
-        "/materials", StaticFiles(directory=settings.materials_dir), name="materials"
-    )
 
     app.mount(
         "/audios",
         StaticFiles(directory=str(settings.audios_dir), html=False),
         name="audios",
     )
+
+    app.mount(
+        "/videos",
+        StaticFiles(directory=str(settings.videos_dir), html=False),
+        name="videos",
+    )
+
     return app

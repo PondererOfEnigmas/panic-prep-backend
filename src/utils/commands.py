@@ -103,3 +103,105 @@ async def convert_pdf_to_pngs(pdf_path: Path, job_id: str) -> list[str]:
     # Cleanup
     pdf_path.unlink(missing_ok=True)
     return urls
+
+
+async def run_ffmpeg(cmd: list[str]) -> None:
+    """
+    Run an ffmpeg command in a thread to avoid blocking the event loop.
+    """
+    logger.debug("Running ffmpeg command: {}", " ".join(cmd))
+    await asyncio.to_thread(subprocess.run, cmd, check=True)
+
+
+async def run_ffmpeg_async(cmd: list[str]) -> None:
+    """
+    Spawn FFmpeg as a subprocess without blocking the event loop.
+    """
+    logger.debug("Running ffmpeg command: {}", " ".join(cmd))
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        msg = stderr.decode().strip()
+        raise RuntimeError(f"FFmpeg failed ({proc.returncode}): {msg}")
+
+
+def build_slide_clip_cmd(
+    png: Path,
+    audio: Path,
+    clip: Path,
+    offset: float = 0.5,  # seconds
+    threads: int = 2,  # ffmpeg threads to use for this job
+) -> list[str]:
+    """
+    Create an MP4 clip in which the slide is on screen immediately
+    and the narration starts `offset` seconds later.
+    """
+    offset_ms = int(offset * 1000)  # adelay expects milliseconds
+    return [
+        "ffmpeg",
+        "-y",
+        # ── video (loop the still PNG) ───────────────────────────────────────────
+        "-loop",
+        "1",
+        "-framerate",
+        "1",  # one frame per second is enough
+        "-i",
+        str(png),
+        # ── audio ───────────────────────────────────────────────────────────────
+        "-i",
+        str(audio),
+        # ── filtering ───────────────────────────────────────────────────────────
+        "-filter_complex",
+        # scale video → even dims & browser-friendly format
+        (
+            "[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,"
+            "format=yuv420p[v];"
+            # pad the audio with `offset` ms of silence
+            f"[1:a]adelay={offset_ms}|{offset_ms}[a]"
+        ),
+        "-map",
+        "[v]",
+        "-map",
+        "[a]",
+        # ── encoding ────────────────────────────────────────────────────────────
+        "-c:v",
+        "libx264",
+        "-r",
+        "30",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-shortest",  # stop when (delayed) audio ends
+        "-threads",
+        str(threads),  # keep CPU usage in check
+        str(clip),
+    ]
+
+
+def build_concat_cmd(
+    list_file: Path,
+    output: Path,
+) -> list[str]:
+    """
+    Concatenate multiple slide clips into one MP4 with faststart for streaming.
+    """
+    return [
+        "ffmpeg",
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        str(list_file),
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        str(output),
+    ]
