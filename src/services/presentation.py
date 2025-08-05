@@ -53,6 +53,8 @@ async def create_slides_from_outline(
     if latex.lstrip().startswith("```"):
         latex = latex.split("```")[1]
 
+    latex = re.sub(r"\\pause\s*", "", latex)  # scrub stray \pause commands
+
     tex_dir = settings.workspace_root / job_id
     tex_dir.mkdir(parents=True, exist_ok=True)
     tex_path = tex_dir / "presentation.tex"
