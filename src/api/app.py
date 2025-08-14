@@ -9,6 +9,8 @@ from src.api.materials import router as materials_router
 from src.api.analysis import router as analysis_router
 from src.api.presentation import router as presentation_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,6 +54,14 @@ def create_app() -> FastAPI:
         "/videos",
         StaticFiles(directory=str(settings.videos_dir), html=False),
         name="videos",
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "https://panic-prep.vercel.app"],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
     )
 
     return app
